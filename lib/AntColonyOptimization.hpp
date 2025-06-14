@@ -5,4 +5,4 @@
 
 using namespace std;
 
-vector<uint32_t> harmonySearch();
+vector<uint32_t> antColonyOptimization();

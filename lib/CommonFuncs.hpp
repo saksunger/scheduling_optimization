@@ -7,6 +7,7 @@
 using namespace std;
 
 void setMaxPeriodAndEqRb();
+float calculateFitness(const vector<uint32_t> &solution);
 void printOrderAndItsFitness(vector<uint32_t> &sol);
 
 inline UeType getUeType(uint32_t idx) {

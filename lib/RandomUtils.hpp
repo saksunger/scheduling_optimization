@@ -10,5 +10,5 @@ inline std::mt19937 &globalRNG() {
 }
 
 int32_t getRandomInt(int32_t min, int32_t max);
-double getRandomDouble(double min, double max);
+float getRandomFloat(float min, float max);
 bool getRandomBool();

@@ -6,7 +6,7 @@ int32_t getRandomInt(int32_t min, int32_t max) {
   return dist(globalRNG());
 }
 
-double getRandomDouble(double min, double max) {
+float getRandomFloat(float min, float max) {
   std::uniform_real_distribution<> dist(min, max);
   return dist(globalRNG());
 }
