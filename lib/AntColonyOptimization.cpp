@@ -1,19 +1,22 @@
 #include "CommonFuncs.hpp"
 #include "Constants.hpp"
 #include "Modes.hpp"
+#include "Ram.hpp"
 #include "RandomUtils.hpp"
+#include "Ue.hpp"
 #include <cmath>
+#include <iostream>
 #include <vector>
 
 using namespace std;
 
-vector<uint32_t> constructSolution(const vector<vector<float>> &pheromone,
+vector<uint32_t> constructSolution(const vector<UE> &ue_list,
+                                   const vector<vector<float>> &pheromone,
                                    const vector<vector<float>> &heuristic) {
-  vector<uint32_t> solution(NUM_OF_UE);
+  vector<uint32_t> solution(TOTAL_UE);
 
-  for (uint32_t i = 0; i < NUM_OF_UE; ++i) {
-    UeType type = getUeType(i);
-    auto modSize = ueModes[type].size();
+  for (uint32_t i = 0; i < TOTAL_UE; ++i) {
+    auto modSize = getModeOptionsForUe(ue_list[i]).size();
 
     vector<float> probs(modSize);
     float sum = 0.0;
@@ -32,9 +35,16 @@ vector<uint32_t> constructSolution(const vector<vector<float>> &pheromone,
         break;
       }
     }
+    if (cum < r)
+      solution[i] = probs.size() - 1;
   }
 
   return solution;
+}
+
+float getHeuristic(const Mode &m, const UeType type) {
+  return 1.0 / (heuristicLatencyWeight[type] * m.period +
+                heuristicEnergyWeight[type] * m.energy + 1e-6f);
 }
 
 void updatePheromone(vector<vector<float>> &pheromone,
@@ -53,12 +63,17 @@ void updatePheromone(vector<vector<float>> &pheromone,
   }
 }
 
-vector<uint32_t> antColonyOptimization() {
-  vector<vector<float>> pheromone(NUM_OF_UE, vector<float>{});
-  vector<vector<float>> heuristic(NUM_OF_UE, vector<float>{});
-  for (uint32_t i = 0; i < NUM_OF_UE; ++i) {
-    pheromone[i] = vector<float>(ueModes[getUeType(i)].size(), 1.0);
-    heuristic[i] = vector<float>(ueModes[getUeType(i)].size(), 1.0);
+vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list) {
+  vector<vector<float>> pheromone(TOTAL_UE, vector<float>{});
+  vector<vector<float>> heuristic(TOTAL_UE, vector<float>{});
+  for (uint32_t i = 0; i < TOTAL_UE; ++i) {
+    auto modSize = getModeOptionsForUe(ue_list[i]).size();
+    pheromone[i] = vector<float>(modSize, 1.0);
+    heuristic[i].resize(modSize);
+    for (uint32_t j = 0; j < modSize; ++j) {
+      const Mode &m = getSelectedMode(ue_list[i], j);
+      heuristic[i][j] = getHeuristic(m, getUeType(ue_list[i]));
+    }
   }
 
   vector<uint32_t> bestSolution;
@@ -68,16 +83,26 @@ vector<uint32_t> antColonyOptimization() {
     vector<vector<uint32_t>> allSolutions;
     vector<float> allFitnesses;
     for (uint32_t ant = 0; ant < NUM_OF_ANT; ++ant) {
-      vector<uint32_t> solution = constructSolution(pheromone, heuristic);
-      float fitness = calculateFitness(solution);
-      if (fitness < bestFitness) {
-        bestFitness = fitness;
+      vector<uint32_t> solution =
+          constructSolution(ue_list, pheromone, heuristic);
+      auto fitness = calculateFitness(ue_list, solution);
+      if (!isfinite(fitness.totalCost)) {
+        continue;
+      }
+      if (fitness.totalCost < bestFitness) {
+        bestFitness = fitness.totalCost;
         bestSolution = solution;
       }
       allSolutions.push_back(solution);
-      allFitnesses.push_back(fitness);
+      allFitnesses.push_back(fitness.totalCost);
     }
     updatePheromone(pheromone, allSolutions, allFitnesses);
+    for (int i = 0; i < bestSolution.size(); ++i) {
+      pheromone[i][bestSolution[i]] += ACO_Q / (1.0 + bestFitness);
+    }
+    if (iter % 10 == 0) {
+      cout << "Iteration " << iter << " Best Fitness: " << bestFitness << endl;
+    }
   }
 
   return bestSolution;

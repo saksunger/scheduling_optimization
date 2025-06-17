@@ -1,32 +1,28 @@
 #pragma once
 
-#include "Constants.hpp"
 #include "Modes.hpp"
-#include <string>
+#include "Ue.hpp"
+#include <cmath>
+#include <cstdint>
+#include <vector>
 
 using namespace std;
 
-void setMaxPeriodAndEqRb();
-float calculateFitness(const vector<uint32_t> &solution);
-void printOrderAndItsFitness(vector<uint32_t> &sol);
+struct FitnessResult {
+  float totalCost;
+  float totalEnergy[UeType::NUM_OF_UE_TYPES];
+  float totalTime[UeType::NUM_OF_UE_TYPES];
+};
 
-inline UeType getUeType(uint32_t idx) {
-  UeType type =
-      idx < cumulativeNumberOfUEsPerMode[UeType::URLLC]
-          ? UeType::URLLC
-          : (idx < cumulativeNumberOfUEsPerMode[UeType::eMBB] ? UeType::eMBB
-                                                              : UeType::mMTC);
-  return type;
+inline uint32_t getRepetitionCount(const UE &ue, const Mode &mode) {
+  return static_cast<uint32_t>(
+      ceil(static_cast<float>(ue.data) / mode.rb_per_period));
 }
 
-inline string printUeType(UeType type) {
-  if (type == UeType::URLLC) {
-    return "URLLC";
-  } else if (type == UeType::eMBB) {
-    return "eMBB";
-  } else if (type == UeType::mMTC) {
-    return "mMTC";
-  } else {
-    return "Wrong Type!";
-  }
-}
+vector<int32_t> generateRBs(int32_t numUEs, int32_t totalTargetRB,
+                            int32_t minRB, int32_t maxRB);
+bool canSchedule(const UE &ue, const Mode &selected_mode, uint32_t start);
+void scheduleUE(const UE &ue, const Mode &selected_mode, uint32_t start);
+FitnessResult calculateFitness(const vector<UE> &ue_list,
+                               const vector<uint32_t> &solution);
+void printFitness(const vector<UE> &ue_list, const vector<uint32_t> &solution);

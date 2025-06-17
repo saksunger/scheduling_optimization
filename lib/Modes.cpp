@@ -3,13 +3,10 @@
 
 using namespace std;
 
-vector<vector<float>> urllcModes = {
-    {2.0, 15.0, 9.0}, {5.0, 10.0, 7.0}, {8.0, 7.0, 5.0}, {12.0, 5.0, 4.0}};
+vector<Mode> urllcModes = {{1, 2, 4}, {2, 3, 3}, {5, 4, 2}};
 
-vector<vector<float>> embbModes = {
-    {20.0, 20.0, 9.0}, {30.0, 15.0, 7.0}, {40.0, 10.0, 5.0}};
+vector<Mode> embbModes = {{10, 10, 4}, {8, 12, 5}, {6, 15, 8}};
 
-vector<vector<float>> mmtcModes = {
-    {50.0, 3.0, 1.0}, {60.0, 2.0, 0.5}, {30.0, 4.0, 2.0}};
+vector<Mode> mmtcModes = {{40, 2, 1}, {60, 3, 1}, {100, 4, 1}};
 
-UeModes ueModes = {urllcModes, embbModes, mmtcModes};
+vector<vector<Mode>> ueModes = {urllcModes, embbModes, mmtcModes};

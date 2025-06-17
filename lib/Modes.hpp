@@ -1,12 +1,24 @@
 #pragma once
 
+#include "Ue.hpp"
+#include <cstdint>
 #include <cstdlib>
 #include <vector>
 
 using namespace std;
 
-typedef vector<vector<vector<float>>> UeModes;
-enum UeType { URLLC, eMBB, mMTC, NUM_OF_UE_TYPES };
-enum Order { Time, RB, Energy, NUM_OF_ORDERS };
+struct Mode {
+  uint32_t period;
+  uint32_t rb_per_period;
+  uint32_t energy;
+};
 
-extern UeModes ueModes;
+extern vector<vector<Mode>> ueModes;
+
+inline const vector<Mode> &getModeOptionsForUe(const UE &ue) {
+  return ueModes[getUeType(ue)];
+}
+
+inline const Mode &getSelectedMode(const UE &ue, uint32_t index) {
+  return getModeOptionsForUe(ue)[index];
+}
