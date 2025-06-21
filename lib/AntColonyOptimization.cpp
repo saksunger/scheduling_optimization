@@ -1,3 +1,4 @@
+#include "AntColonyOptimization.hpp"
 #include "CommonFuncs.hpp"
 #include "Constants.hpp"
 #include "Modes.hpp"
@@ -10,9 +11,38 @@
 
 using namespace std;
 
+// Forward declarations for parameterized helper functions
+vector<uint32_t> constructSolution(const vector<UE> &ue_list,
+                                   const vector<vector<float>> &pheromone,
+                                   const vector<vector<float>> &heuristic,
+                                   float pheroCoeff,
+                                   float heurCoeff);
+
+void updatePheromone(vector<vector<float>> &pheromone,
+                     const vector<vector<uint32_t>> &solutions,
+                     const vector<float> &fitnesses,
+                     float rho,
+                     float q);
+
+// Original helper functions that delegate to parameterized versions
 vector<uint32_t> constructSolution(const vector<UE> &ue_list,
                                    const vector<vector<float>> &pheromone,
                                    const vector<vector<float>> &heuristic) {
+  return constructSolution(ue_list, pheromone, heuristic, PHEROMONE_COEFF, HEURISTIC_COEFF);
+}
+
+void updatePheromone(vector<vector<float>> &pheromone,
+                     const vector<vector<uint32_t>> &solutions,
+                     const vector<float> &fitnesses) {
+  updatePheromone(pheromone, solutions, fitnesses, ACO_RHO, ACO_Q);
+}
+
+// Parameterized constructSolution
+vector<uint32_t> constructSolution(const vector<UE> &ue_list,
+                                   const vector<vector<float>> &pheromone,
+                                   const vector<vector<float>> &heuristic,
+                                   float pheroCoeff,
+                                   float heurCoeff) {
   vector<uint32_t> solution(TOTAL_UE);
 
   for (uint32_t i = 0; i < TOTAL_UE; ++i) {
@@ -20,15 +50,15 @@ vector<uint32_t> constructSolution(const vector<UE> &ue_list,
 
     vector<float> probs(modSize);
     float sum = 0.0;
-    for (int j = 0; j < modSize; ++j) {
-      probs[j] = pow(pheromone[i][j], PHEROMONE_COEFF) *
-                 pow(heuristic[i][j], HEURISTIC_COEFF);
+    for (uint32_t j = 0; j < modSize; ++j) {
+      probs[j] = pow(pheromone[i][j], pheroCoeff) *
+                 pow(heuristic[i][j], heurCoeff);
       sum += probs[j];
     }
 
     float r = getRandomFloat(0.0, sum);
     float cum = 0.0;
-    for (int j = 0; j < probs.size(); ++j) {
+    for (uint32_t j = 0; j < probs.size(); ++j) {
       cum += probs[j];
       if (r <= cum) {
         solution[i] = j;
@@ -47,23 +77,39 @@ float getHeuristic(const Mode &m, const UeType type) {
                 heuristicEnergyWeight[type] * m.energy + 1e-6f);
 }
 
+// Parameterized updatePheromone
 void updatePheromone(vector<vector<float>> &pheromone,
                      const vector<vector<uint32_t>> &solutions,
-                     const vector<float> &fitnesses) {
+                     const vector<float> &fitnesses,
+                     float rho,
+                     float q) {
   for (auto &row : pheromone) {
     for (auto &val : row) {
-      val *= (1 - ACO_RHO); // evaporation
+      val *= (1 - rho); // evaporation
     }
   }
   for (uint32_t k = 0; k < solutions.size(); ++k) {
-    float contrib = ACO_Q / (1.0 + fitnesses[k]);
+    float contrib = q / (1.0 + fitnesses[k]);
     for (uint32_t i = 0; i < solutions[k].size(); ++i) {
       pheromone[i][solutions[k][i]] += contrib;
     }
   }
 }
 
+// Original function delegates to parameterized version
 vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list) {
+  return antColonyOptimization(ue_list, NUM_ITERATIONS, NUM_OF_ANT,
+                               PHEROMONE_COEFF, HEURISTIC_COEFF, ACO_RHO, ACO_Q);
+}
+
+// Parameterized version
+vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list,
+                                       uint32_t iterations,
+                                       uint32_t numAnts,
+                                       float pheroCoeff,
+                                       float heurCoeff,
+                                       float rho,
+                                       float q) {
   vector<vector<float>> pheromone(TOTAL_UE, vector<float>{});
   vector<vector<float>> heuristic(TOTAL_UE, vector<float>{});
   for (uint32_t i = 0; i < TOTAL_UE; ++i) {
@@ -79,12 +125,12 @@ vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list) {
   vector<uint32_t> bestSolution;
   float bestFitness = numeric_limits<float>::max();
 
-  for (uint32_t iter = 0; iter < NUM_ITERATIONS; ++iter) {
+  for (uint32_t iter = 0; iter < iterations; ++iter) {
     vector<vector<uint32_t>> allSolutions;
     vector<float> allFitnesses;
-    for (uint32_t ant = 0; ant < NUM_OF_ANT; ++ant) {
+    for (uint32_t ant = 0; ant < numAnts; ++ant) {
       vector<uint32_t> solution =
-          constructSolution(ue_list, pheromone, heuristic);
+          constructSolution(ue_list, pheromone, heuristic, pheroCoeff, heurCoeff);
       auto fitness = calculateFitness(ue_list, solution);
       if (!isfinite(fitness.totalCost)) {
         continue;
@@ -96,9 +142,9 @@ vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list) {
       allSolutions.push_back(solution);
       allFitnesses.push_back(fitness.totalCost);
     }
-    updatePheromone(pheromone, allSolutions, allFitnesses);
-    for (int i = 0; i < bestSolution.size(); ++i) {
-      pheromone[i][bestSolution[i]] += ACO_Q / (1.0 + bestFitness);
+    updatePheromone(pheromone, allSolutions, allFitnesses, rho, q);
+    for (uint32_t i = 0; i < bestSolution.size(); ++i) {
+      pheromone[i][bestSolution[i]] += q / (1.0 + bestFitness);
     }
     if (iter % 10 == 0) {
       cout << "Iteration " << iter << " Best Fitness: " << bestFitness << endl;

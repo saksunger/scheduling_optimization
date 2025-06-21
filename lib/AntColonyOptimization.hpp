@@ -6,4 +6,14 @@
 
 using namespace std;
 
+// Original function signature for backward compatibility
 vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list);
+
+// New overloaded function with parameters
+vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list,
+                                       uint32_t iterations,
+                                       uint32_t numAnts,
+                                       float pheroCoeff,
+                                       float heurCoeff,
+                                       float rho,
+                                       float q);

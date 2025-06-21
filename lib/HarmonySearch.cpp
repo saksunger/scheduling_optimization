@@ -1,3 +1,4 @@
+#include "HarmonySearch.hpp"
 #include "CommonFuncs.hpp"
 #include "Constants.hpp"
 #include "Modes.hpp"
@@ -19,25 +20,35 @@ vector<uint32_t> generateRandomSolution(const vector<UE> &ue_list) {
   return solution;
 }
 
+// Original function delegates to parameterized version with default values
 vector<uint32_t> harmonySearch(const vector<UE> &ue_list) {
+  return harmonySearch(ue_list, NUM_ITERATIONS, HMS, HMCR, PAR);
+}
+
+// Parameterized version
+vector<uint32_t> harmonySearch(const vector<UE> &ue_list,
+                               uint32_t iterations,
+                               uint32_t hms,
+                               float hmcr,
+                               float par) {
   vector<vector<uint32_t>> harmonyMemory;
   vector<float> fitnessMemory;
 
-  for (int i = 0; i < HMS; ++i) {
+  for (uint32_t i = 0; i < hms; ++i) {
     auto sol = generateRandomSolution(ue_list);
     auto fit = calculateFitness(ue_list, sol);
     harmonyMemory.push_back(sol);
     fitnessMemory.push_back(fit.totalCost);
   }
 
-  for (int iter = 0; iter < NUM_ITERATIONS; ++iter) {
+  for (uint32_t iter = 0; iter < iterations; ++iter) {
     vector<uint32_t> newSolution;
 
     for (uint32_t idx = 0; idx < TOTAL_UE; ++idx) {
       auto prob = getRandomFloat(0.0, 1.0);
-      if (prob < HMCR) {
-        auto hmIdx = getRandomInt(0, HMS - 1);
-        if (getRandomFloat(0.0, 1.0) < PAR) {
+      if (prob < hmcr) {
+        auto hmIdx = getRandomInt(0, hms - 1);
+        if (getRandomFloat(0.0, 1.0) < par) {
           uint32_t modSize = getModeOptionsForUe(ue_list[idx]).size();
           uint32_t cur = harmonyMemory[hmIdx][idx];
           uint32_t adj =
