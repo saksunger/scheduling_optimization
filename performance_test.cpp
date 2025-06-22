@@ -364,7 +364,7 @@ int main() {
 
     // Number of test cases and retests
     const int NUM_TESTS = 3;
-    const int NUM_RETEST = 2;
+    const int NUM_RETEST = 10;
 
     // Random device for seed generation
     random_device rd;
@@ -374,13 +374,13 @@ int main() {
     }
 
     // Harmony Search parameter variations
-    vector<uint32_t> harmonyIterations = {5, 10, 15};
+    vector<uint32_t> harmonyIterations = {10, 20, 40};
     vector<uint32_t> hmsList = {5, 10, 15};
     vector<float> hmcrList = {0.75, 0.85, 0.95};
     vector<float> parList = {0.05, 0.2, 0.4};
 
     // Ant Colony parameter variations
-    vector<uint32_t> antIterations = {5, 10, 15};
+    vector<uint32_t> antIterations = {10, 20, 40};
     vector<uint32_t> numAntsList = {5, 10, 20};
     vector<float> pheroCoeffList = {0.8, 1.2, 1.6};
     vector<float> heurCoeffList = {1.5, 2.5, 3.5};
