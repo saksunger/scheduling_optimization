@@ -31,8 +31,23 @@ vector<uint32_t> harmonySearch(const vector<UE> &ue_list,
                                uint32_t hms,
                                float hmcr,
                                float par) {
+  // Create a dummy vector for iteration fitness that won't be used
+  vector<float> dummyIterationFitness;
+  return harmonySearch(ue_list, iterations, hms, hmcr, par, dummyIterationFitness);
+}
+
+// New version that captures iteration fitness values
+vector<uint32_t> harmonySearch(const vector<UE> &ue_list,
+                               uint32_t iterations,
+                               uint32_t hms,
+                               float hmcr,
+                               float par,
+                               vector<float> &iterationFitness) {
   vector<vector<uint32_t>> harmonyMemory;
   vector<float> fitnessMemory;
+
+  // Clear the iteration fitness vector to ensure it's empty
+  iterationFitness.clear();
 
   for (uint32_t i = 0; i < hms; ++i) {
     auto sol = generateRandomSolution(ue_list);
@@ -40,6 +55,10 @@ vector<uint32_t> harmonySearch(const vector<UE> &ue_list,
     harmonyMemory.push_back(sol);
     fitnessMemory.push_back(fit.totalCost);
   }
+
+  // Get the initial best fitness
+  float initialBestFitness = *min_element(fitnessMemory.begin(), fitnessMemory.end());
+  iterationFitness.push_back(initialBestFitness);
 
   for (uint32_t iter = 0; iter < iterations; ++iter) {
     vector<uint32_t> newSolution;
@@ -72,9 +91,14 @@ vector<uint32_t> harmonySearch(const vector<UE> &ue_list,
       harmonyMemory[hmIdx] = newSolution;
       fitnessMemory[hmIdx] = newFit.totalCost;
     }
+
+    // Get the current best fitness
+    float bestFitness = *min_element(fitnessMemory.begin(), fitnessMemory.end());
+    iterationFitness.push_back(bestFitness);
+
     if (iter % 10 == 0) {
       cout << "Iteration " << iter << " Best Fitness: "
-           << *min_element(fitnessMemory.begin(), fitnessMemory.end()) << endl;
+           << bestFitness << endl;
     }
   }
 

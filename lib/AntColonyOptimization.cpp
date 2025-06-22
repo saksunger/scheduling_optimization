@@ -110,6 +110,24 @@ vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list,
                                        float heurCoeff,
                                        float rho,
                                        float q) {
+  // Create a dummy vector for iteration fitness that won't be used
+  vector<float> dummyIterationFitness;
+  return antColonyOptimization(ue_list, iterations, numAnts, pheroCoeff,
+                              heurCoeff, rho, q, dummyIterationFitness);
+}
+
+// New version that captures iteration fitness values
+vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list,
+                                       uint32_t iterations,
+                                       uint32_t numAnts,
+                                       float pheroCoeff,
+                                       float heurCoeff,
+                                       float rho,
+                                       float q,
+                                       vector<float> &iterationFitness) {
+  // Clear the iteration fitness vector to ensure it's empty
+  iterationFitness.clear();
+
   vector<vector<float>> pheromone(TOTAL_UE, vector<float>{});
   vector<vector<float>> heuristic(TOTAL_UE, vector<float>{});
   for (uint32_t i = 0; i < TOTAL_UE; ++i) {
@@ -124,6 +142,9 @@ vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list,
 
   vector<uint32_t> bestSolution;
   float bestFitness = numeric_limits<float>::max();
+
+  // Add initial fitness value (infinite since no solution yet)
+  iterationFitness.push_back(bestFitness);
 
   for (uint32_t iter = 0; iter < iterations; ++iter) {
     vector<vector<uint32_t>> allSolutions;
@@ -146,6 +167,14 @@ vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list,
     for (uint32_t i = 0; i < bestSolution.size(); ++i) {
       pheromone[i][bestSolution[i]] += q / (1.0 + bestFitness);
     }
+
+    // Record the best fitness for this iteration
+    if (isfinite(bestFitness)) {
+      iterationFitness.push_back(bestFitness);
+    } else {
+      iterationFitness.push_back(numeric_limits<float>::max());
+    }
+
     if (iter % 10 == 0) {
       cout << "Iteration " << iter << " Best Fitness: " << bestFitness << endl;
     }
