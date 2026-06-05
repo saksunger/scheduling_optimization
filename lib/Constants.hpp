@@ -12,6 +12,8 @@ constexpr uint32_t NUM_ITERATIONS = 100;
 constexpr uint32_t HMS = 10; // Harmony Memory Size
 constexpr float HMCR = 0.9;  // Harmony Memory Considering Rate
 constexpr float PAR = 0.3;   // Pitch Adjusting Rate
+constexpr float LSR = 0.3;       // Local Search Rate (probability of applying local search)
+constexpr uint32_t LS_STEPS = 5; // Local Search step count (improvement steps per application)
 
 constexpr uint32_t NUM_OF_ANT = 10;
 constexpr float PHEROMONE_COEFF = 1.0;

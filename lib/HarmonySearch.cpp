@@ -20,9 +20,40 @@ vector<uint32_t> generateRandomSolution(const vector<UE> &ue_list) {
   return solution;
 }
 
+// Local Search operator (hill-climbing): performs a limited number of
+// improvement steps on a solution. Each step picks a random UE and tries every
+// alternative mode for it, keeping the move that gives the lowest cost; a move
+// is accepted only if it strictly improves the cost (otherwise the UE is left
+// unchanged). This refines promising harmonies that crossover/pitch-adjustment
+// alone would only reach slowly.
+float localSearch(const vector<UE> &ue_list, vector<uint32_t> &solution,
+                  float currentCost, uint32_t steps) {
+  for (uint32_t s = 0; s < steps; ++s) {
+    uint32_t idx = getRandomInt(0, TOTAL_UE - 1);
+    uint32_t modeCount = getModeOptionsForUe(ue_list[idx]).size();
+    uint32_t bestMode = solution[idx];
+    float bestCost = currentCost;
+    for (uint32_t m = 0; m < modeCount; ++m) {
+      if (m == solution[idx])
+        continue;
+      uint32_t prev = solution[idx];
+      solution[idx] = m;
+      float cost = calculateFitness(ue_list, solution).totalCost;
+      solution[idx] = prev;
+      if (isfinite(cost) && cost < bestCost) {
+        bestCost = cost;
+        bestMode = m;
+      }
+    }
+    solution[idx] = bestMode; // accept best neighbor (may be unchanged)
+    currentCost = bestCost;
+  }
+  return currentCost;
+}
+
 // Original function delegates to parameterized version with default values
 vector<uint32_t> harmonySearch(const vector<UE> &ue_list) {
-  return harmonySearch(ue_list, NUM_ITERATIONS, HMS, HMCR, PAR);
+  return harmonySearch(ue_list, NUM_ITERATIONS, HMS, HMCR, PAR, LSR);
 }
 
 // Parameterized version
@@ -30,10 +61,11 @@ vector<uint32_t> harmonySearch(const vector<UE> &ue_list,
                                uint32_t iterations,
                                uint32_t hms,
                                float hmcr,
-                               float par) {
+                               float par,
+                               float lsr) {
   // Create a dummy vector for iteration fitness that won't be used
   vector<float> dummyIterationFitness;
-  return harmonySearch(ue_list, iterations, hms, hmcr, par, dummyIterationFitness);
+  return harmonySearch(ue_list, iterations, hms, hmcr, par, lsr, dummyIterationFitness);
 }
 
 // New version that captures iteration fitness values
@@ -42,6 +74,7 @@ vector<uint32_t> harmonySearch(const vector<UE> &ue_list,
                                uint32_t hms,
                                float hmcr,
                                float par,
+                               float lsr,
                                vector<float> &iterationFitness) {
   vector<vector<uint32_t>> harmonyMemory;
   vector<float> fitnessMemory;
@@ -84,12 +117,19 @@ vector<uint32_t> harmonySearch(const vector<UE> &ue_list,
     }
 
     auto newFit = calculateFitness(ue_list, newSolution);
+    float newCost = newFit.totalCost;
+
+    // Local Search operator: with probability lsr, refine the freshly improvised
+    // harmony with a few hill-climbing steps before considering it for memory.
+    if (isfinite(newCost) && getRandomFloat(0.0, 1.0) < lsr) {
+      newCost = localSearch(ue_list, newSolution, newCost, LS_STEPS);
+    }
 
     auto maxFit = max_element(fitnessMemory.begin(), fitnessMemory.end());
-    if (isfinite(newFit.totalCost) && newFit.totalCost < *maxFit) {
+    if (isfinite(newCost) && newCost < *maxFit) {
       uint32_t hmIdx = distance(fitnessMemory.begin(), maxFit);
       harmonyMemory[hmIdx] = newSolution;
-      fitnessMemory[hmIdx] = newFit.totalCost;
+      fitnessMemory[hmIdx] = newCost;
     }
 
     // Get the current best fitness

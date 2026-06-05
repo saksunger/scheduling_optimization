@@ -36,6 +36,7 @@ struct TestResult {
     uint32_t hms;
     float hmcr;
     float par;
+    float lsr;
 
     // Ant Colony specific
     uint32_t numAnts;
@@ -91,7 +92,7 @@ vector<UE> generateUEList(unsigned seed) {
 
 // Function to run Harmony Search with different parameters
 TestResult runHarmonySearchTest(const vector<UE>& ue_list, uint32_t iterations,
-                               uint32_t hms, float hmcr, float par, unsigned seed) {
+                               uint32_t hms, float hmcr, float par, float lsr, unsigned seed) {
     TestResult result;
     srand(seed); // Set random seed for this test
 
@@ -100,12 +101,13 @@ TestResult runHarmonySearchTest(const vector<UE>& ue_list, uint32_t iterations,
     result.hms = hms;
     result.hmcr = hmcr;
     result.par = par;
+    result.lsr = lsr;
 
     // Start timing
     auto start = high_resolution_clock::now();
 
     // Call the overloaded harmonySearch function with parameters
-    vector<uint32_t> solution = harmonySearch(ue_list, iterations, hms, hmcr, par, result.iterationFitness);
+    vector<uint32_t> solution = harmonySearch(ue_list, iterations, hms, hmcr, par, lsr, result.iterationFitness);
 
     // End timing
     auto end = high_resolution_clock::now();
@@ -215,7 +217,7 @@ void saveIterationFitnessToCSV(const vector<vector<TestResult>>& allResults,
 void saveAggregatedHarmonyResultsToCSV(const vector<AggregatedResult>& results,
                                       const vector<vector<TestResult>>& allResults) {
     ofstream file("harmony_aggregated_results.csv");
-    file << "Iterations,HMS,HMCR,PAR,AvgFitness,BestFitness,WorstFitness,"
+    file << "Iterations,HMS,HMCR,PAR,LSR,AvgFitness,BestFitness,WorstFitness,"
          << "AvgTime(ms),BestTime(ms),WorstTime(ms),"
          << "AvgLatencyURLLC,AvgEnergyURLLC,AvgLatencyEMBB,AvgEnergyEMBB,AvgLatencyMMTC,AvgEnergyMMTC\n";
 
@@ -227,6 +229,7 @@ void saveAggregatedHarmonyResultsToCSV(const vector<AggregatedResult>& results,
              << firstResult.hms << ","
              << firstResult.hmcr << ","
              << firstResult.par << ","
+             << firstResult.lsr << ","
              << agg.avgFitness << ","
              << agg.bestFitness << ","
              << agg.worstFitness << ","
@@ -363,7 +366,7 @@ int main() {
     cout << "Running performance tests..." << endl;
 
     // Number of test cases and retests
-    const int NUM_TESTS = 3;
+    const int NUM_TESTS = 4;
     const int NUM_RETEST = 10;
 
     // Random device for seed generation
@@ -374,18 +377,21 @@ int main() {
     }
 
     // Harmony Search parameter variations
-    vector<uint32_t> harmonyIterations = {10, 20, 40};
-    vector<uint32_t> hmsList = {5, 10, 15};
-    vector<float> hmcrList = {0.75, 0.85, 0.95};
-    vector<float> parList = {0.05, 0.2, 0.4};
+    // Sets 1-3 keep lsr=0.0 (Local Search off) so they match the original report;
+    // set 4 turns the Local Search operator on (lsr=0.3).
+    vector<uint32_t> harmonyIterations = {10, 20, 40, 60};
+    vector<uint32_t> hmsList = {5, 10, 15, 20};
+    vector<float> hmcrList = {0.75, 0.85, 0.95, 0.95};
+    vector<float> parList = {0.05, 0.2, 0.4, 0.3};
+    vector<float> lsrList = {0.0, 0.0, 0.0, 0.3};
 
     // Ant Colony parameter variations
-    vector<uint32_t> antIterations = {10, 20, 40};
-    vector<uint32_t> numAntsList = {5, 10, 20};
-    vector<float> pheroCoeffList = {0.8, 1.2, 1.6};
-    vector<float> heurCoeffList = {1.5, 2.5, 3.5};
-    vector<float> rhoList = {0.1, 0.15, 0.25};
-    vector<float> qList = {75.0, 125.0, 175.0};
+    vector<uint32_t> antIterations = {10, 20, 40, 60};
+    vector<uint32_t> numAntsList = {5, 10, 20, 30};
+    vector<float> pheroCoeffList = {0.8, 1.2, 1.6, 2.0};
+    vector<float> heurCoeffList = {1.5, 2.5, 3.5, 4.5};
+    vector<float> rhoList = {0.1, 0.15, 0.25, 0.3};
+    vector<float> qList = {75.0, 125.0, 175.0, 225.0};
 
     // Results storage
     vector<vector<TestResult>> harmonyAllResults;
@@ -403,7 +409,7 @@ int main() {
             vector<UE> ue_list = generateUEList(seeds[r]);
 
             TestResult result = runHarmonySearchTest(
-                ue_list, harmonyIterations[i], hmsList[i], hmcrList[i], parList[i], seeds[r]
+                ue_list, harmonyIterations[i], hmsList[i], hmcrList[i], parList[i], lsrList[i], seeds[r]
             );
             harmonyResults.push_back(result);
 
