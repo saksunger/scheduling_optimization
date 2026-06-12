@@ -182,3 +182,70 @@ vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list,
 
   return bestSolution;
 }
+
+// Budget-based version: identical search logic, but terminated by an exact
+// FFE budget so that different algorithms can be compared under equal
+// budgets. The ant loop stops mid-iteration when the budget runs out; the
+// pheromone update then uses the partial ant set.
+vector<uint32_t> antColonyOptimizationBudget(const vector<UE> &ue_list,
+                                             uint32_t numAnts,
+                                             float pheroCoeff,
+                                             float heurCoeff,
+                                             float rho,
+                                             float q,
+                                             uint32_t maxEvals,
+                                             vector<float> &ffeBest) {
+  resetEvalCounter();
+  ffeBest.clear();
+
+  auto recordProgress = [&](float best) {
+    uint64_t upTo = min<uint64_t>(getEvalCount(), maxEvals);
+    while (ffeBest.size() < upTo)
+      ffeBest.push_back(best);
+  };
+
+  vector<vector<float>> pheromone(TOTAL_UE, vector<float>{});
+  vector<vector<float>> heuristic(TOTAL_UE, vector<float>{});
+  for (uint32_t i = 0; i < TOTAL_UE; ++i) {
+    auto modSize = getModeOptionsForUe(ue_list[i]).size();
+    pheromone[i] = vector<float>(modSize, 1.0);
+    heuristic[i].resize(modSize);
+    for (uint32_t j = 0; j < modSize; ++j) {
+      const Mode &m = getSelectedMode(ue_list[i], j);
+      heuristic[i][j] = getHeuristic(m, getUeType(ue_list[i]));
+    }
+  }
+
+  vector<uint32_t> bestSolution;
+  float bestFitness = numeric_limits<float>::max();
+
+  while (getEvalCount() < maxEvals) {
+    vector<vector<uint32_t>> allSolutions;
+    vector<float> allFitnesses;
+    for (uint32_t ant = 0; ant < numAnts && getEvalCount() < maxEvals; ++ant) {
+      vector<uint32_t> solution =
+          constructSolution(ue_list, pheromone, heuristic, pheroCoeff, heurCoeff);
+      auto fitness = calculateFitness(ue_list, solution);
+      if (!isfinite(fitness.totalCost)) {
+        recordProgress(bestFitness);
+        continue;
+      }
+      if (fitness.totalCost < bestFitness) {
+        bestFitness = fitness.totalCost;
+        bestSolution = solution;
+      }
+      allSolutions.push_back(solution);
+      allFitnesses.push_back(fitness.totalCost);
+      recordProgress(bestFitness);
+    }
+    updatePheromone(pheromone, allSolutions, allFitnesses, rho, q);
+    for (uint32_t i = 0; i < bestSolution.size(); ++i) {
+      pheromone[i][bestSolution[i]] += q / (1.0 + bestFitness);
+    }
+  }
+
+  while (ffeBest.size() < maxEvals)
+    ffeBest.push_back(bestFitness);
+
+  return bestSolution;
+}

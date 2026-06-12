@@ -27,3 +27,16 @@ vector<uint32_t> antColonyOptimization(const vector<UE> &ue_list,
                                        float rho,
                                        float q,
                                        vector<float> &iterationFitness);
+
+// Budget-based version: runs until exactly maxEvals fitness function
+// evaluations (FFE) have been spent (one FFE = one calculateFitness call,
+// including infeasible ants). ffeBest is filled with the best-so-far fitness
+// after each evaluation (size == maxEvals on return).
+vector<uint32_t> antColonyOptimizationBudget(const vector<UE> &ue_list,
+                                             uint32_t numAnts,
+                                             float pheroCoeff,
+                                             float heurCoeff,
+                                             float rho,
+                                             float q,
+                                             uint32_t maxEvals,
+                                             vector<float> &ffeBest);

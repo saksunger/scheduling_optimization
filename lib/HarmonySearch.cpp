@@ -146,3 +146,89 @@ vector<uint32_t> harmonySearch(const vector<UE> &ue_list,
   uint32_t bestIdx = distance(fitnessMemory.begin(), minFit);
   return harmonyMemory[bestIdx];
 }
+
+// Budget-based version: identical search logic, but terminated by an exact
+// FFE budget (one FFE = one calculateFitness call) so that different
+// algorithms can be compared under equal budgets.
+vector<uint32_t> harmonySearchBudget(const vector<UE> &ue_list,
+                                     uint32_t hms,
+                                     float hmcr,
+                                     float par,
+                                     float lsr,
+                                     uint32_t maxEvals,
+                                     vector<float> &ffeBest) {
+  vector<vector<uint32_t>> harmonyMemory;
+  vector<float> fitnessMemory;
+
+  resetEvalCounter();
+  ffeBest.clear();
+
+  // Record best-so-far fitness for every evaluation spent so far
+  auto recordProgress = [&](float best) {
+    uint64_t upTo = min<uint64_t>(getEvalCount(), maxEvals);
+    while (ffeBest.size() < upTo)
+      ffeBest.push_back(best);
+  };
+
+  for (uint32_t i = 0; i < hms; ++i) {
+    auto sol = generateRandomSolution(ue_list);
+    auto fit = calculateFitness(ue_list, sol);
+    harmonyMemory.push_back(sol);
+    fitnessMemory.push_back(fit.totalCost);
+  }
+
+  float bestFitness = *min_element(fitnessMemory.begin(), fitnessMemory.end());
+  recordProgress(bestFitness);
+
+  while (getEvalCount() < maxEvals) {
+    vector<uint32_t> newSolution;
+
+    for (uint32_t idx = 0; idx < TOTAL_UE; ++idx) {
+      auto prob = getRandomFloat(0.0, 1.0);
+      if (prob < hmcr) {
+        auto hmIdx = getRandomInt(0, hms - 1);
+        if (getRandomFloat(0.0, 1.0) < par) {
+          uint32_t modSize = getModeOptionsForUe(ue_list[idx]).size();
+          uint32_t cur = harmonyMemory[hmIdx][idx];
+          uint32_t adj =
+              (cur + (getRandomInt(0, 1) ? 1 : -1) + modSize) % modSize;
+          newSolution.push_back(adj);
+        } else {
+          newSolution.push_back(harmonyMemory[hmIdx][idx]);
+        }
+      } else {
+        auto mod =
+            getRandomInt(0, getModeOptionsForUe(ue_list[idx]).size() - 1);
+        newSolution.push_back(mod);
+      }
+    }
+
+    auto newFit = calculateFitness(ue_list, newSolution);
+    float newCost = newFit.totalCost;
+
+    // One Local Search application costs at most 2 * LS_STEPS evaluations
+    // (each step probes the two alternative modes), so it is only started
+    // when that worst case still fits in the remaining budget.
+    if (isfinite(newCost) && getRandomFloat(0.0, 1.0) < lsr &&
+        getEvalCount() + 2 * LS_STEPS <= maxEvals) {
+      newCost = localSearch(ue_list, newSolution, newCost, LS_STEPS);
+    }
+
+    auto maxFit = max_element(fitnessMemory.begin(), fitnessMemory.end());
+    if (isfinite(newCost) && newCost < *maxFit) {
+      uint32_t hmIdx = distance(fitnessMemory.begin(), maxFit);
+      harmonyMemory[hmIdx] = newSolution;
+      fitnessMemory[hmIdx] = newCost;
+    }
+
+    bestFitness = *min_element(fitnessMemory.begin(), fitnessMemory.end());
+    recordProgress(bestFitness);
+  }
+
+  while (ffeBest.size() < maxEvals)
+    ffeBest.push_back(bestFitness);
+
+  auto minFit = min_element(fitnessMemory.begin(), fitnessMemory.end());
+  uint32_t bestIdx = distance(fitnessMemory.begin(), minFit);
+  return harmonyMemory[bestIdx];
+}

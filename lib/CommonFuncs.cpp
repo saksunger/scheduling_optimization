@@ -11,6 +11,8 @@
 
 using namespace std;
 
+uint64_t g_evalCount = 0;
+
 vector<int32_t> generateRBs(int32_t numUEs, int32_t totalTargetRB,
                             int32_t minRB, int32_t maxRB) {
   vector<int32_t> rbNeeds(numUEs);
@@ -69,6 +71,7 @@ void scheduleUE(const UE &ue, const Mode &selected_mode, uint32_t start) {
 
 FitnessResult calculateFitness(const vector<UE> &ue_list,
                                const vector<uint32_t> &solution) {
+  ++g_evalCount;
   resetTimeline();
   FitnessResult result{0.0, {}, {}};
 

@@ -14,6 +14,12 @@ struct FitnessResult {
   float totalTime[UeType::NUM_OF_UE_TYPES];
 };
 
+// Fitness function evaluation (FFE) accounting: one FFE = one call to
+// calculateFitness. Used to terminate every algorithm at the same budget.
+extern uint64_t g_evalCount;
+inline void resetEvalCounter() { g_evalCount = 0; }
+inline uint64_t getEvalCount() { return g_evalCount; }
+
 inline uint32_t getRepetitionCount(const UE &ue, const Mode &mode) {
   return static_cast<uint32_t>(
       ceil(static_cast<float>(ue.data) / mode.rb_per_period));
